@@ -1,57 +1,66 @@
 // src/components/Signup.js
 import React, { useState } from 'react';
-import { Form, Button } from 'react-bootstrap';
+import { auth } from '../firebase'; 
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { Form, Button, Alert } from 'react-bootstrap';
+import { Link } from 'react-router-dom'; // Import Link from React Router
+import './AuthForm.css'; // Import the CSS
 
 const Signup = ({ onSignup }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-  const handleSignup = (e) => {
+  const handleSignup = async (e) => {
     e.preventDefault();
+    setError('');
 
-    // Check if the user already exists
-    const existingUsers = JSON.parse(localStorage.getItem('users')) || [];
-    const userExists = existingUsers.find(user => user.username === username);
-
-    if (userExists) {
-      alert('Username already exists. Please choose another one.');
-      return;
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+      onSignup();
+    } catch (err) {
+      setError(err.message);
     }
-
-    // Add the new user to localStorage
-    const newUser = { username, password };
-    const updatedUsers = [...existingUsers, newUser];
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-
-    alert('Signup successful. Please login now.');
-    onSignup();
   };
 
   return (
-    <Form onSubmit={handleSignup}>
-      <h2>Signup</h2>
-      <Form.Group>
-        <Form.Label>Username</Form.Label>
-        <Form.Control
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-      </Form.Group>
-      <Form.Group>
-        <Form.Label>Password</Form.Label>
-        <Form.Control
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-      </Form.Group>
-      <Button variant="primary" type="submit">
-        Signup
-      </Button>
-    </Form>
+    <div className="auth-container">
+      <div className="auth-card">
+        <h2 className="auth-header">Signup</h2>
+        {error && <Alert variant="danger">{error}</Alert>}
+        <Form onSubmit={handleSignup} className="auth-form">
+          <Form.Group className="mb-3">
+            <Form.Label>Email</Form.Label>
+            <Form.Control
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter email"
+              required
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Password</Form.Label>
+            <Form.Control
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              required
+            />
+          </Form.Group>
+
+          <Button variant="primary" type="submit" className="auth-button">
+            Signup
+          </Button>
+        </Form>
+
+        <div className="auth-alternate">
+          Already have an account? <Link to="/login">Login here</Link>
+        </div>
+      </div>
+    </div>
   );
 };
 

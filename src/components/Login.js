@@ -1,52 +1,66 @@
 // src/components/Login.js
 import React, { useState } from 'react';
-import { Form, Button } from 'react-bootstrap';
+import { auth } from '../firebase'; 
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { Form, Button, Alert } from 'react-bootstrap';
+import { Link } from 'react-router-dom'; // Import Link from React Router
+import './AuthForm.css'; // Import the CSS
 
 const Login = ({ onLogin }) => {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    setError('');
 
-    // Fetch users from localStorage
-    const users = JSON.parse(localStorage.getItem('users')) || [];
-    const user = users.find(user => user.username === username && user.password === password);
-
-    if (user) {
-      // Save the logged-in user to localStorage
-      localStorage.setItem('loggedInUser', username);
-      onLogin(username);
-    } else {
-      alert('Invalid credentials. Please try again.');
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+      onLogin();
+    } catch (err) {
+      setError(err.message);
     }
   };
 
   return (
-    <Form onSubmit={handleLogin}>
-      <h2>Login</h2>
-      <Form.Group>
-        <Form.Label>Username</Form.Label>
-        <Form.Control
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          required
-        />
-      </Form.Group>
-      <Form.Group>
-        <Form.Label>Password</Form.Label>
-        <Form.Control
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-      </Form.Group>
-      <Button variant="primary" type="submit">
-        Login
-      </Button>
-    </Form>
+    <div className="auth-container">
+      <div className="auth-card">
+        <h2 className="auth-header">Login</h2>
+        {error && <Alert variant="danger">{error}</Alert>}
+        <Form onSubmit={handleLogin} className="auth-form">
+          <Form.Group className="mb-3">
+            <Form.Label>Email</Form.Label>
+            <Form.Control
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter email"
+              required
+            />
+          </Form.Group>
+
+          <Form.Group className="mb-3">
+            <Form.Label>Password</Form.Label>
+            <Form.Control
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter password"
+              required
+            />
+          </Form.Group>
+
+          <Button variant="primary" type="submit" className="auth-button">
+            Login
+          </Button>
+        </Form>
+
+        <div className="auth-alternate">
+          Don't have an account? <Link to="/signup">Signup here</Link>
+        </div>
+      </div>
+    </div>
   );
 };
 

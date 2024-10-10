@@ -2,9 +2,13 @@
 import React from 'react';
 import { Button, Table } from 'react-bootstrap';
 
-const CustomerList = ({ customers, deleteCustomer, setEditingCustomer }) => {
+const CustomerList = ({ customers = [], deleteCustomer, setEditingCustomer }) => {
+  if (!Array.isArray(customers) || customers.length === 0) {
+    return <p className="text-center">No customers available.</p>;
+  }
+
   return (
-    <Table striped bordered hover>
+    <Table striped bordered hover responsive>
       <thead>
         <tr>
           <th>Name</th>
@@ -31,17 +35,22 @@ const CustomerList = ({ customers, deleteCustomer, setEditingCustomer }) => {
             <td>{customer.receivedPayment}</td>
             <td>{customer.balance}</td>
             <td>
-              {customer.installments.map((installment, index) => (
-                <div key={index}>Installment {index + 1}: {installment}</div>
-              ))}
+              {customer.installments && customer.installments.length > 0 ? (
+                customer.installments.map((installment, index) => (
+                  <div key={index}>Installment {index + 1}: {installment}</div>
+                ))
+              ) : (
+                <span>No Installments</span>
+              )}
             </td>
             <td>
               <Button
                 variant="warning"
                 onClick={() => setEditingCustomer(customer)}
+                className="me-2"
               >
                 Edit
-              </Button>{' '}
+              </Button>
               <Button
                 variant="danger"
                 onClick={() => deleteCustomer(customer.id)}

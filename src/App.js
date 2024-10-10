@@ -1,41 +1,48 @@
+// src/App.js
 import React, { useState, useEffect } from 'react';
-import { Button } from 'react-bootstrap'; // Import Button from react-bootstrap
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { auth } from './firebase';
+import { onAuthStateChanged, signOut } from 'firebase/auth';
+import Signup from './components/Signup';
+import Login from './components/Login';
 import CustomerList from './components/CustomerList';
 import AddCustomer from './components/AddCustomer';
-import FilterSort from './components/FilterSort';
-import Login from './components/Login';
-import Signup from './components/Signup';
-
-// The rest of your code...
-
+import { Container, Button } from 'react-bootstrap';
 
 const App = () => {
+  const [user, setUser] = useState(null);
   const [customers, setCustomers] = useState([]);
-  const [filter, setFilter] = useState('');
-  const [sort, setSort] = useState('');
   const [editingCustomer, setEditingCustomer] = useState(null);
-  const [loggedInUser, setLoggedInUser] = useState(null); // For tracking the logged-in user
-  const [isSignup, setIsSignup] = useState(false); // Toggle between signup and login forms
 
-  // Load customers from localStorage based on logged-in user
+  // Listen for authentication state changes
   useEffect(() => {
-    if (loggedInUser) {
-      const savedCustomers = JSON.parse(localStorage.getItem(`customers_${loggedInUser}`)) || [];
-      setCustomers(savedCustomers);
-    }
-  }, [loggedInUser]);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser || null);
+      if (currentUser) {
+        // Load user-specific customers from localStorage
+        const storedCustomers = JSON.parse(localStorage.getItem(`customers_${currentUser.uid}`)) || [];
+        setCustomers(storedCustomers);
+      } else {
+        setCustomers([]);
+      }
+    });
 
-  // Save customers to localStorage based on logged-in user
+    return () => unsubscribe();
+  }, []);
+
+  // Save customers to localStorage whenever they change
   useEffect(() => {
-    if (loggedInUser) {
-      localStorage.setItem(`customers_${loggedInUser}`, JSON.stringify(customers));
+    if (user) {
+      localStorage.setItem(`customers_${user.uid}`, JSON.stringify(customers));
     }
-  }, [customers, loggedInUser]);
+  }, [customers, user]);
 
+  // Handler to add a new customer
   const addCustomer = (newCustomer) => {
     setCustomers([...customers, newCustomer]);
   };
 
+  // Handler to update an existing customer
   const updateCustomer = (updatedCustomer) => {
     setCustomers(
       customers.map((customer) =>
@@ -45,65 +52,59 @@ const App = () => {
     setEditingCustomer(null);
   };
 
+  // Handler to delete a customer
   const deleteCustomer = (id) => {
     setCustomers(customers.filter((customer) => customer.id !== id));
   };
 
-  const handleFilterChange = (value) => setFilter(value);
-  const handleSortChange = (value) => setSort(value);
-
-  const filteredCustomers = customers
-    .filter((customer) =>
-      customer.name.toLowerCase().includes(filter.toLowerCase())
-    )
-    .sort((a, b) => {
-      if (sort === 'name') return a.name.localeCompare(b.name);
-      if (sort === 'date') return new Date(a.meetingDate) - new Date(b.meetingDate);
-      return 0;
-    });
-
-  const handleLogin = (username) => {
-    setLoggedInUser(username);
-  };
-
-  const handleSignup = () => {
-    setIsSignup(false); // Switch to login after signup
-  };
-
-  const handleLogout = () => {
-    setLoggedInUser(null);
-    localStorage.removeItem('loggedInUser');
-  };
-
   return (
-    <div className="container">
-      <h1 className="text-center my-4">CRM APPLICATION</h1>
-      {loggedInUser ? (
-        <>
-          <Button variant="danger" onClick={handleLogout}>Logout</Button>
-          {editingCustomer ? (
-            <AddCustomer addCustomer={updateCustomer} customerToEdit={editingCustomer} />
-          ) : (
-            <AddCustomer addCustomer={addCustomer} />
-          )}
-          <FilterSort handleFilterChange={handleFilterChange} handleSortChange={handleSortChange} />
-          <CustomerList
-            customers={filteredCustomers}
-            deleteCustomer={deleteCustomer}
-            setEditingCustomer={setEditingCustomer}
+    <Router>
+      <Container>
+        <Routes>
+          {/* Public Routes */}
+          <Route
+            path="/login"
+            element={user ? <Navigate to="/" /> : <Login />}
           />
-        </>
-      ) : isSignup ? (
-        <Signup onSignup={handleSignup} />
-      ) : (
-        <Login onLogin={handleLogin} />
-      )}
-      {!loggedInUser && (
-        <Button variant="link" onClick={() => setIsSignup(!isSignup)}>
-          {isSignup ? 'Already have an account? Login' : "Don't have an account? Signup"}
-        </Button>
-      )}
-    </div>
+          <Route
+            path="/signup"
+            element={user ? <Navigate to="/" /> : <Signup />}
+          />
+
+          {/* Private Route */}
+          <Route
+            path="/"
+            element={
+              user ? (
+                <>
+                  <div className="d-flex justify-content-between align-items-center my-4">
+                    <h1>Welcome, {user.email}</h1>
+                    <Button variant="danger" onClick={() => signOut(auth)}>
+                      Logout
+                    </Button>
+                  </div>
+                  {editingCustomer ? (
+                    <AddCustomer
+                      addCustomer={updateCustomer}
+                      customerToEdit={editingCustomer}
+                    />
+                  ) : (
+                    <AddCustomer addCustomer={addCustomer} />
+                  )}
+                  <CustomerList
+                    customers={customers}
+                    deleteCustomer={deleteCustomer}
+                    setEditingCustomer={setEditingCustomer}
+                  />
+                </>
+              ) : (
+                <Navigate to="/login" />
+              )
+            }
+          />
+        </Routes>
+      </Container>
+    </Router>
   );
 };
 
